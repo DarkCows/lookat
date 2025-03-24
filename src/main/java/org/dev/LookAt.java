@@ -1,7 +1,7 @@
 package org.dev;
 
 import com.google.gson.Gson;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -25,25 +25,23 @@ import java.lang.reflect.Type;
 public class LookAt implements ClientModInitializer {
 	private static final File FILE = new File("config/locations.json");
 	private static final File parentDir = FILE.getParentFile();
-	private static final Map<String, int[]> locations = new HashMap<>();
+	private static final Map<String, float[]> locations = new HashMap<>();
 	private static final Gson gson = new Gson();
 
 	@Override
 	public void onInitializeClient() {
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			locations();
-		});
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->  locations());
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			dispatcher.register(literal("add")
 					.then(argument("name", StringArgumentType.string())
-					.then(argument("x", IntegerArgumentType.integer())
-					.then(argument("y", IntegerArgumentType.integer())
+					.then(argument("x", FloatArgumentType.floatArg())
+					.then(argument("y", FloatArgumentType.floatArg())
 					.executes(context -> {
-							String name = StringArgumentType.getString(context, "name");
-							int x = IntegerArgumentType.getInteger(context, "x");
-							int y = IntegerArgumentType.getInteger(context, "y");
-							add(name, x, y);
-							return 1;
+						String name = StringArgumentType.getString(context, "name");
+						float x = FloatArgumentType.getFloat(context, "x");
+						float y = FloatArgumentType.getFloat(context, "y");
+						add(name, x, y);
+						return 1;
 					})))));
 			dispatcher.register(literal("locations")
 					.executes(context -> {
@@ -51,31 +49,31 @@ public class LookAt implements ClientModInitializer {
 						return 1;
 					}));
 			dispatcher.register(literal("look")
-					.then(argument("x", IntegerArgumentType.integer(-180, 180))
-					.then(argument("y", IntegerArgumentType.integer(-90, 90))
+					.then(argument("x", FloatArgumentType.floatArg(-180, 180))
+					.then(argument("y", FloatArgumentType.floatArg(-90, 90))
 					.executes(context -> {
-							int x = IntegerArgumentType.getInteger(context, "x");
-							int y = IntegerArgumentType.getInteger(context, "y");
-							rotatePlayer(x, y);
-							return 1;
+						float x = FloatArgumentType.getFloat(context, "x");
+						float y = FloatArgumentType.getFloat(context, "y");
+						rotatePlayer(x, y);
+						return 1;
 					}))));
 			dispatcher.register(literal("look")
 					.then(argument("name", StringArgumentType.string())
 					.executes(context -> {
-							String name = StringArgumentType.getString(context, "name");
-							if (locations.containsKey(name)) {
-								int[] coords = locations.get(name);
-								rotatePlayer(coords[0], coords[1]);
-							} else {
-								sendMessageToPlayer("§8Точка '" + name + "' не найдена");
-							}
-							return 1;
+						String name = StringArgumentType.getString(context, "name");
+						if (locations.containsKey(name)) {
+							float[] coords = locations.get(name);
+							rotatePlayer(coords[0], coords[1]);
+						} else {
+							sendMessageToPlayer("message.lookat.not_found", name);
+						}
+						return 1;
 					})));
 			dispatcher.register(literal("remove")
 					.then(argument("name", StringArgumentType.string())
 					.executes(context -> {
 						String name = StringArgumentType.getString(context, "name");
-						removeLocation(name);
+						remove(name);
 						return 1;
 					})));
 		});
@@ -86,45 +84,40 @@ public class LookAt implements ClientModInitializer {
 		if (client.player != null) {
 			client.player.setYaw(x);
 			client.player.setPitch(y);
-		} else {
-			System.out.println("Игрок не найден");
 		}
 	}
 
-	private void removeLocation(String name) {
+	private void remove(String name) {
 		if (locations.containsKey(name)) {
 			locations.remove(name);
-			try (FileWriter writer = new FileWriter(FILE)) {
-				gson.toJson(locations, writer);
-				sendMessageToPlayer("§cТочка '" + name + "' удалена.");
-			} catch (IOException e) {
-				sendMessageToPlayer("§4Ошибка при сохранении точек.");
+			if (saveLocations()) {
+				sendMessageToPlayer("message.lookat.removed", name);
 			}
 		} else {
-			sendMessageToPlayer("§8Точка '" + name + "' не найдена.");
+			sendMessageToPlayer("message.lookat.not_found", name);
 		}
 	}
 
 	public void locations() {
 		if (FILE.exists()) {
 			try (FileReader reader = new FileReader(FILE)) {
-				Type type = new TypeToken<Map<String, int[]>>() {}.getType();
-				Map<String, int[]> loadedLocations = gson.fromJson(reader, type);
+				Type type = new TypeToken<Map<String, float[]>>() {}.getType();
+				Map<String, float[]> loadedLocations = gson.fromJson(reader, type);
 
 				if (loadedLocations != null) {
 					locations.putAll(loadedLocations);
 					StringBuilder message = new StringBuilder("Сохраненные точки:\n");
-					for (Map.Entry<String, int[]> entry : locations.entrySet()) {
+					for (Map.Entry<String, float[]> entry : locations.entrySet()) {
 						message.append("Точка ").append(entry.getKey())
 								.append(": X=").append(entry.getValue()[0])
 								.append(", Y=").append(entry.getValue()[1]).append("\n");
 					}
 					sendMessageToPlayer(message.toString());
 				} else {
-					sendMessageToPlayer("§7Буфер направлений пуст, создайте новую точку через /add или используйте /look.");
+					sendMessageToPlayer("message.lookat.empty");
 				}
 			} catch (IOException e) {
-				sendMessageToPlayer("§4Ошибка при загрузке точек. Попробуйте снова.");
+				sendMessageToPlayer("message.lookat.error_to_load");
 			}
 		} else {
 			try {
@@ -132,32 +125,36 @@ public class LookAt implements ClientModInitializer {
 					parentDir.mkdirs();
 				}
 				FILE.createNewFile();
-				sendMessageToPlayer("§7Буфер направлений пуст, создайте новую точку через /add или используйте /look.");
+				sendMessageToPlayer("message.lookat.empty");
 			} catch (IOException e) {
-				sendMessageToPlayer("§4Ошибка при создании файла. Попробуйте снова.");
+				sendMessageToPlayer("message.lookat.error_to_create");
 			}
 		}
 	}
 
-	public void add(String name, int x, int y) {
-		locations.put(name, new int[]{x, y});
-		if (parentDir != null && !parentDir.exists()) {
-			parentDir.mkdirs();
-		}
-		try (FileWriter writer = new FileWriter(FILE)) {
-			gson.toJson(locations, writer);
-			sendMessageToPlayer("§aТочка " + name + " сохранена: " + x + ", " + y);
-		} catch (IOException e) {
-			sendMessageToPlayer("§4Ошибка при сохранении точек. Попробуйте снова.");
+	public void add(String name, float x, float y) {
+		locations.put(name, new float[]{x, y});
+		if (saveLocations()) {
+			sendMessageToPlayer("message.lookat.added", name, x, y);
 		}
 	}
 
-	private void sendMessageToPlayer(String message) {
+	private boolean saveLocations() {
+		try (FileWriter writer = new FileWriter(FILE)) {
+			gson.toJson(locations, writer);
+			return true;
+		} catch (IOException e) {
+			sendMessageToPlayer("message.lookat.error");
+			return false;
+		}
+	}
+
+	private void sendMessageToPlayer(String message, Object... args) {
 		MinecraftClient client = MinecraftClient.getInstance();
 		if (client.player != null) {
-			client.player.sendMessage(Text.of(message), false);
+			client.player.sendMessage(Text.translatable(message, args), false);
 		} else {
-			System.out.println("Игрок не найден");
+			System.out.println("message.lookat.player_not_found");
 		}
 	}
 }

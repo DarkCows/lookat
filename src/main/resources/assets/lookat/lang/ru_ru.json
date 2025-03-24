@@ -1,0 +1,10 @@
+{
+  "message.lookat.added": "§aТочка %s §aсохранена: %s %s§a.",
+  "message.lookat.removed": "§cТочка %s §cудалена.",
+  "message.lookat.empty": "§7Буфер направлений пуст, создайте новую точку через /add или используйте /look.",
+  "message.lookat.not_found": "§8Точка %s §8не найдена.",
+  "message.lookat.player_not_found": "Игрок не найден",
+  "message.lookat.error_to_create": "§4Ошибка при создании файла точек.",
+  "message.lookat.error_to_load": "§4Ошибка при загрузке точек.",
+  "message.lookat.error_to_save": "§4Ошибка при сохранении точек."
+}

@@ -1,0 +1,10 @@
+{
+  "message.lookat.added": "§aPoint %s §asaved: %s %s§a.",
+  "message.lookat.removed": "§cPoint %s §cdeleted.",
+  "message.lookat.empty": "§7Direction buffer is empty, create new point via /add or use /look.",
+  "message.lookat.not_found": "§8Point %s §8not found.",
+  "message.lookat.player_not_found": "Player not found",
+  "message.lookat.error_to_create": "§4Error creating points file.",
+  "message.lookat.error_to_load": "§4Error loading points.",
+  "message.lookat.error_to_save": "§4Error saving points."
+}
