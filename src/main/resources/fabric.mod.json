@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "lookat",
+	"version": "${version}",
+	"name": "lookAt",
+	"description": "This mod helps you with wireless tp scheme",
+	"authors": [
+		"Fantoooc"
+	],
+	"license": "MIT",
+	"icon": "assets/lookat/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"client": [
+			"org.dev.LookAt"
+		]
+	},
+	"depends": {
+		"fabricloader": "*",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
